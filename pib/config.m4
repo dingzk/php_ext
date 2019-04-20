@@ -13,9 +13,8 @@ dnl [  --with-pib             Include pib support])
 
 dnl Otherwise use enable:
 
-dnl PHP_ARG_ENABLE(pib, whether to enable pib support,
-dnl Make sure that the comment is aligned:
-dnl [  --enable-pib           Enable pib support])
+PHP_ARG_ENABLE(pib, whether to enable pib support,
+[  --enable-pib           Enable pib support])
 
 if test "$PHP_PIB" != "no"; then
   dnl Write more examples of tests here...
