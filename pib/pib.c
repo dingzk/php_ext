@@ -27,6 +27,9 @@
 #include "ext/standard/info.h"
 #include "php_pib.h"
 
+#define TEMP_CONVERTER_TO_FAHRENHEIT 2
+#define TEMP_CONVERTER_TO_CELSIUS 1
+
 /* If you declare any globals in php_pib.h uncomment this:
 ZEND_DECLARE_MODULE_GLOBALS(pib)
 */
@@ -76,6 +79,14 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_celsius_to_fahrenheit, 0, 0, 1)
     ZEND_ARG_INFO(0, celsius)
 ZEND_END_ARG_INFO();
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_multiple_fahrenheit_to_celsius, 0, 0, 1)
+    ZEND_ARG_ARRAY_INFO(0, temperatures, 0)
+ZEND_END_ARG_INFO();
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_fahrenheit_to_celsius_ref, 0, 0, 1)
+    ZEND_ARG_INFO(1, fahrenheit)
+ZEND_END_ARG_INFO();
+
 static double php_celsius_to_fahrenheit(double c)
 {
     return (((double)9/5 *c ) + 32 );
@@ -84,11 +95,67 @@ static double php_celsius_to_fahrenheit(double c)
 PHP_FUNCTION(celsius_to_fahrenheit)
 {
     double c;
-    if (zend_parse_parameters(ZEND_NUM_ARGS(), "d", &c) == FAILURE) {
+    //if (zend_parse_parameters(ZEND_NUM_ARGS(), "d", &c) == FAILURE) {
+    //    return;
+    //}
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_DOUBLE(c);
+    ZEND_PARSE_PARAMETERS_END();
+
+    RETURN_DOUBLE(php_celsius_to_fahrenheit(c))
+}
+
+static double php_fahrenheit_to_celsius(double f)
+{
+    return ((double)5/9) * (double)(f - 32);
+}
+
+PHP_FUNCTION(fahrenheit_to_celsius)
+{
+    double f;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "d", &f) == FAILURE) {
         return;
     }
 
-    RETURN_DOUBLE(php_celsius_to_fahrenheit(c))
+    RETURN_DOUBLE(php_fahrenheit_to_celsius(f));
+}
+
+PHP_FUNCTION(multiple_fahrenheit_to_celsius)
+{
+    HashTable *temperatures;
+    zval *data;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "h", &temperatures) == FAILURE) {
+        return;
+    }
+    if (zend_hash_num_elements(temperatures) == 0) {
+        return;
+    }
+
+    array_init_size(return_value, zend_hash_num_elements(temperatures));
+
+    ZEND_HASH_FOREACH_VAL(temperatures, data)
+        zval dup;
+        ZVAL_COPY_VALUE(&dup, data);
+        convert_to_double(&dup);
+    add_next_index_double(return_value, php_fahrenheit_to_celsius(Z_DVAL(dup)));
+    ZEND_HASH_FOREACH_END();
+}
+
+PHP_FUNCTION(fahrenheit_to_celsius_ref)
+{
+    double result;
+    zval *param;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "z", &param) == FAILURE) {
+        return;
+    }
+
+    ZVAL_DEREF(param);
+    convert_to_double(param);
+
+    ZVAL_DOUBLE(param, php_fahrenheit_to_celsius(Z_DVAL_P(param)));
 }
 
 
@@ -107,6 +174,11 @@ static void php_pib_init_globals(zend_pib_globals *pib_globals)
  */
 PHP_MINIT_FUNCTION(pib)
 {
+
+    REGISTER_LONG_CONSTANT("TEMP_CONVERTER_TO_CELSIUS", TEMP_CONVERTER_TO_CELSIUS, CONST_CS|CONST_PERSISTENT);
+    REGISTER_LONG_CONSTANT("TEMP_CONVERTER_TO_FAHRENHEIT", TEMP_CONVERTER_TO_FAHRENHEIT, CONST_CS|CONST_PERSISTENT);
+
+
 	/* If you have INI entries, uncomment these lines
 	REGISTER_INI_ENTRIES();
 	*/
@@ -167,6 +239,9 @@ PHP_MINFO_FUNCTION(pib)
 const zend_function_entry pib_functions[] = {
 	PHP_FE(confirm_pib_compiled,	NULL)		/* For testing, remove later. */
 	PHP_FE(celsius_to_fahrenheit,	arginfo_celsius_to_fahrenheit)		/* For testing, remove later. */
+	PHP_FE(fahrenheit_to_celsius,	arginfo_celsius_to_fahrenheit)		/* For testing, remove later. */
+	PHP_FE(fahrenheit_to_celsius_ref,	arginfo_fahrenheit_to_celsius_ref)		/* For testing, remove later. */
+	PHP_FE(multiple_fahrenheit_to_celsius,	arginfo_multiple_fahrenheit_to_celsius)		/* For testing, remove later. */
 	PHP_FE_END	/* Must be the last line in pib_functions[] */
 };
 /* }}} */
