@@ -41,6 +41,19 @@ ZEND_DECLARE_MODULE_GLOBALS(pib)
 /* True global resources - no need for thread safety here */
 static int le_pib;
 
+static zend_string *more, *less;
+static zend_ulong max = 100;
+
+static void register_persistent_string(char *str, zend_string **result)
+{
+    *result = zend_string_init(str, strlen(str), 1);
+    zend_string_hash_val(*result);
+
+    GC_FLAGS(*result) |= IS_STR_INTERNED;
+}
+
+
+
 /* {{{ PHP_INI
  */
 /* Remove comments and fill if you need to have entries in php.ini
@@ -54,7 +67,7 @@ PHP_INI_END()
 static void pib_rnd_init(void)
 {
     PIB_G(cur_score) = 0;
-    php_random_int(0, 100, &PIB_G(rnd), 0);
+    php_random_int(0, max, &PIB_G(rnd), 0);
 }
 
 PHP_GINIT_FUNCTION(pib)
@@ -72,9 +85,17 @@ ZEND_END_ARG_INFO()
 PHP_MINIT_FUNCTION(pib)
 {
 
-    REGISTER_LONG_CONSTANT("TEMP_CONVERTER_TO_CELSIUS", TEMP_CONVERTER_TO_CELSIUS, CONST_CS|CONST_PERSISTENT);
-    REGISTER_LONG_CONSTANT("TEMP_CONVERTER_TO_FAHRENHEIT", TEMP_CONVERTER_TO_FAHRENHEIT, CONST_CS|CONST_PERSISTENT);
+    //REGISTER_LONG_CONSTANT("TEMP_CONVERTER_TO_FAHRENHEIT", TEMP_CONVERTER_TO_FAHRENHEIT, CONST_CS|CONST_PERSISTENT);
 
+    char *pib_max;
+    
+    register_persistent_string("more", &more);
+    register_persistent_string("less", &less);
+    if (pib_max = getenv("PIB_RAND_MAX")) {
+        if (!strchr(pib_max, '-')) {
+            max = ZEND_STRTOUL(pib_max, NULL, 10);
+        }
+    }
 
 	/* If you have INI entries, uncomment these lines
 	REGISTER_INI_ENTRIES();
@@ -90,6 +111,9 @@ PHP_MSHUTDOWN_FUNCTION(pib)
 	/* uncomment this line if you have INI entries
 	UNREGISTER_INI_ENTRIES();
 	*/
+    zend_string_release(more);
+    zend_string_release(less);
+
 	return SUCCESS;
 }
 /* }}} */
@@ -134,10 +158,12 @@ PHP_FUNCTION(pib_guess)
     }
     PIB_G(cur_score) ++;
     if (r < PIB_G(rnd)) {
-        RETURN_STRING("more");
+        //RETURN_STRING("more");
+        RETURN_STR(more);
     }
 
-    RETURN_STRING("less");
+    //RETURN_STRING("less");
+    RETURN_STR(less);
 }
 
 PHP_FUNCTION(pib_get_scores)
